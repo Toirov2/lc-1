@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wexford LC Dashboard Panel</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #f4f7fa;
+            color: #333;
+            overflow-x: hidden;
+        }
+        .sidebar {
+            background-color: #2c3e50;
+            color: white;
+            height: 100vh;
+            width: 100%;
+            max-width: 280px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        .sidebar-open {
+            transform: translateX(0);
+        }
+        .main-content {
+            margin-left: 0;
+            padding: 16px;
+            transition: margin-left 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .tab {
+            display: none;
+        }
+        .tab.active {
+            display: block;
+        }
+        .paid {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .unpaid {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .error {
+            color: #721c24;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        .search-container {
+            margin-bottom: 1rem;
+        }
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .search-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        .admin-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background-color: #f9f9f9;
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .admin-form input,
+        .admin-form select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .admin-form input:focus,
+        .admin-form select:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        .admin-form button {
+            padding: 12px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .admin-form button:hover {
+            background-color: #2980b9;
+        }
+        .admin-form button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #3498db;
+            color: #fff;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        button.delete {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        button.delete:hover {
+            background-color: #c0392b;
+        }
+        button.cancel {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        button.cancel:hover {
+            background-color: #c0392b;
+        }
+        button.excel {
+            background-color: #10b981;
+            color: #fff;
+        }
+        button.excel:hover {
+            background-color: #059669;
+        }
+        .data-view {
+            background-color: #fff;
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .metrics-grid {
+            display: grid;
+            gap: 12px;
+        }
+        .metrics-grid > div {
+            padding: 16px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .metrics-grid > div:hover {
+            transform: translateY(-2px);
+        }
+        .sidebar-button {
+            width: 100%;
+            text-align: left;
+            padding: 12px;
+            font-size: 16px;
+        }
+        .hamburger {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1100;
+            background-color: #3498db;
+            padding: 10px;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        .overlay.active {
+            display: block;
+        }
+        @media (min-width: 768px) {
+            .sidebar {
+                transform: translateX(0);
+                width: 280px;
+            }
+            .main-content {
+                margin-left: 280px;
+            }
+            .hamburger {
+                display: none;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            .admin-form {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .admin-form input,
+            .admin-form select,
+            .admin-form button {
+                flex: 1 1 200px;
+            }
+        }
+        @media (max-width: 767px) {
+            table {
+                font-size: 12px;
+            }
+            th, td {
+                padding: 8px;
+            }
+            .data-view {
+                padding: 12px;
+            }
+            .main-content {
+                padding: 12px;
+            }
+            .hamburger {
+                display: block;
+            }
+            .sidebar-button:last-child {
+                margin-top: auto;
+            }
+        }
+        @media (max-width: 480px) {
+            .search-input {
+                font-size: 14px;
+                padding: 10px;
+            }
+            .admin-form button {
+                font-size: 14px;
+                padding: 10px;
+            }
+            th, td {
+                font-size: 12px;
+                padding: 6px;
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <!-- Overlay for mobile sidebar -->
+    <div class="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Hamburger Menu -->
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar -->
+    <div class="sidebar flex flex-col p-4">
+        <h1 class="text-2xl font-bold mb-6">Wexford LC</h1>
+        <button onclick="openView('dashboard')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mb-2 sidebar-button">Dashboard</button>
+        <button onclick="openView('admin')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mb-2 sidebar-button">Admin Panel</button>
+        <button onclick="toggleSidebar()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg sidebar-button">Close Sidebar</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content flex-1">
+        <!-- Dashboard View -->
+        <div id="dashboard" class="tab active">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
+
+            <!-- Metrics -->
+            <div class="metrics-grid mb-8">
+                <div class="bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="openView('allStudents')">
+                    <h3 class="text-lg font-semibold text-gray-700">Total Students</h3>
+                    <p id="totalStudents" class="text-2xl font-bold text-blue-600">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="openView('allTeachers')">
+                    <h3 class="text-lg font-semibold text-gray-700">Total Teachers</h3>
+                    <p id="totalTeachers" class="text-2xl font-bold text-blue-600">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="openView('allGroups')">
+                    <h3 class="text-lg font-semibold text-gray-700">Total Groups</h3>
+                    <p id="totalGroups" class="text-2xl font-bold text-blue-600">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="openView('paidStudents')">
+                    <h3 class="text-lg font-semibold text-gray-700">Paid Students</h3>
+                    <p id="paidStudents" class="text-2xl font-bold text-blue-600">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="openView('unpaidStudents')">
+                    <h3 class="text-lg font-semibold text-gray-700">Unpaid Students</h3>
+                    <p id="unpaidStudents" class="text-2xl font-bold text-blue-600">0</p>
+                </div>
+            </div>
+
+            <!-- All Students View -->
+            <div id="allStudents" class="tab data-view">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">All Students</h2>
+                    <button onclick="exportToExcel('allStudentsTable', 'All_Students')" class="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 excel">Download as Excel</button>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="studentSearch" class="search-input" placeholder="Search students by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Parent Name</th>
+                                <th class="p-3">Parent Phone</th>
+                                <th class="p-3">Teacher</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allStudentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- All Teachers View -->
+            <div id="allTeachers" class="tab data-view">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">All Teachers</h2>
+                    <button onclick="exportToExcel('allTeachersTable', 'All_Teachers')" class="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 excel">Download as Excel</button>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="teacherSearch" class="search-input" placeholder="Search teachers by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allTeachersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- All Groups View -->
+            <div id="allGroups" class="tab data-view">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">All Groups</h2>
+                    <button onclick="exportToExcel('allGroupsTable', 'All_Groups')" class="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 excel">Download as Excel</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Group ID</th>
+                                <th class="p-3">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allGroupsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Group Students View -->
+            <div id="groupStudents" class="tab data-view">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Group Students</h2>
+                    <button onclick="exportToExcel('groupStudentsTable', 'Group_Students')" class="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 excel">Download as Excel</button>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="groupStudentSearch" class="search-input" placeholder="Search students by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname yearning>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Parent Name</th>
+                                <th class="p-3">Parent Phone</th>
+                                <th class="p-3">Teacher</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="groupStudentsTable"></tbody>
+                    </table>
+                </div>
+                </div>
+
+            <!-- Paid Students View -->
+            <div id="paidStudents" class="tab data-view">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Paid Students</h2>
+                    <button onclick="exportToExcel('paidStudentsTable', 'Paid_Students')" class="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 excel">Download as Excel</button>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="paidStudentSearch" class="search-input" placeholder="Search paid students by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Parent Name</th>
+                                <th class="p-3">Parent Phone</th>
+                                <th class="p-3">Teacher</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paidStudentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Unpaid Students View -->
+            <div id="unpaidStudents" class="tab data-view">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Unpaid Students</h2>
+                    <button onclick="exportToExcel('unpaidStudentsTable', 'Unpaid_Students')" class="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 excel">Download as Excel</button>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="unpaidStudentSearch" class="search-input" placeholder="Search unpaid students by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Parent Name</th>
+                                <th class="p-3">Parent Phone</th>
+                                <th class="p-3">Teacher</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="unpaidStudentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Students -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Students</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Teacher</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentStudentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payment Status -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Payment Status</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentStatusTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Student Distribution by Time</h2>
+                    <canvas id="timeDistributionChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Payment Status Distribution</h2>
+                    <canvas id="paymentStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Panel View -->
+        <div id="admin" class="tab">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Admin Panel</h1>
+            <div class="flex border-b-2 border-gray-200 mb-8 overflow-x-auto">
+                <button class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-t-lg hover:bg-blue-600 hover:text-white active:bg-blue-600 active:text-white whitespace-nowrap" onclick="openAdminTab('students')">Students</button>
+                <button class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-t-lg hover:bg-blue-600 hover:text-white active:bg-blue-600 active:text-white whitespace-nowrap" onclick="openAdminTab('payments')">Payments</button>
+                <button class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-t-lg hover:bg-blue-600 hover:text-white active:bg-blue-600 active:text-white whitespace-nowrap" onclick="openAdminTab('teachers')">Teachers</button>
+                <button class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-t-lg hover:bg-blue-600 hover:text-white active:bg-blue-600 active:text-white whitespace-nowrap" onclick="openAdminTab('groups')">Groups</button>
+            </div>
+
+            <!-- Students Tab -->
+            <div id="students" class="tab active">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Add Student</h2>
+                <form id="studentForm" class="admin-form">
+                    <input type="text" id="studentName" placeholder="First Name" required>
+                    <input type="text" id="studentSurname" placeholder="Surname" required>
+                    <input type="text" id="studentPhone" placeholder="Phone Number" required pattern="\d+">
+                    <input type="text" id="parentName" placeholder="Parent Name" required>
+                    <input type="text" id="parentPhone" placeholder="Parent Phone" required pattern="\d+">
+                    <select id="teacherSelect" required>
+                        <option value="">Select Teacher</option>
+                    </select>
+                    <select id="groupSelect" required>
+                        <option value="">Select Group</option>
+                    </select>
+                    <select id="timeSelect" required>
+                        <option value="">Select Time</option>
+                        <option value="09:00-10:30">09:00-10:30</option>
+                        <option value="11:00-12:30">11:00-12:30</option>
+                        <option value="13:00-14:30">13:00-14:30</option>
+                        <option value="15:00-16:30">15:00-16:30</option>
+                        <option value="17:00-18:30">17:00-18:30</option>
+                    </select>
+                    <button type="submit" id="studentSubmit">Save</button>
+                </form>
+                <div id="studentError" class="error"></div>
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Students List</h2>
+                <div class="search-container">
+                    <input type="text" id="adminStudentSearch" class="search-input" placeholder="Search students by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Parent Name</th>
+                                <th class="p-3">Parent Phone</th>
+                                <th class="p-3">Teacher</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Payment Status</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payments Tab -->
+            <div id="payments" class="tab">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Payments</h2>
+                <div class="search-container">
+                    <input type="text" id="paymentSearch" class="search-input" placeholder="Search payments by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Teachers Tab -->
+            <div id="teachers" class="tab">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Add Teacher</h2>
+                <form id="teacherForm" class="admin-form">
+                    <input type="text" id="teacherName" placeholder="First Name" required>
+                    <input type="text" id="teacherSurname" placeholder="Surname" required>
+                    <input type="text" id="teacherPhone" placeholder="Phone Number" required pattern="\d+">
+                    <select id="teacherGroup" required>
+                        <option value="">Select Group</option>
+                    </select>
+                    <select id="teacherTime" required>
+                        <option value="">Select Time</option>
+                        <option value="09:00-10:30">09:00-10:30</option>
+                        <option value="11:00-12:30">11:00-12:30</option>
+                        <option value="13:00-14:30">13:00-14:30</option>
+                        <option value="15:00-16:30">15:00-16:30</option>
+                        <option value="17:00-18:30">17:00-18:30</option>
+                    </select>
+                    <button type="submit" id="teacherSubmit">Save</button>
+                </form>
+                <div id="teacherError" class="error"></div>
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Teachers List</h2>
+                <div class="search-container">
+                    <input type="text" id="adminTeacherSearch" class="search-input" placeholder="Search teachers by name or surname">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Surname</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Group</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacherTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Groups Tab -->
+            <div id="groups" class="tab">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Add Group</h2>
+                <form id="groupForm" class="admin-form">
+                    <input type="text" id="groupId" placeholder="Group ID (5 digits)" pattern="\d{5}" required>
+                    <select id="groupTime" required>
+                        <option value="">Select Time</option>
+                        <option value="09:00-10:30">09:00-10:30</option>
+                        <option value="11:00-12:30">11:00-12:30</option>
+                        <option value="13:00-14:30">13:00-14:30</option>
+                        <option value="15:00-16:30">15:00-16:30</option>
+                        <option value="17:00-18:30">17:00-18:30</option>
+                    </select>
+                    <button type="submit">Save</button>
+                </form>
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Groups List</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-blue-600 text-white">
+                                <th class="p-3">Group ID</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="groupTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        const state = {
+            students: loadFromStorage('students', []),
+            teachers: loadFromStorage('teachers', []),
+            groups: loadFromStorage('groups', []),
+            payments: loadFromStorage('payments', {}),
+            lastResetMonth: loadFromStorage('lastResetMonth', null),
+            listeners: [],
+            addListener(callback) {
+                this.listeners.push(callback);
+            },
+            notifyListeners() {
+                this.listeners.forEach(callback => callback());
+            },
+            updateData(key, value) {
+                this[key] = value;
+                saveToStorage(key, value);
+                this.notifyListeners();
+            }
+        };
+
+        // Load data from localStorage
+        function loadFromStorage(key, defaultValue) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : defaultValue;
+            } catch (e) {
+                console.error(`Error loading ${key} from localStorage:`, e);
+                return defaultValue;
+            }
+        }
+
+        // Save data to localStorage
+        function saveToStorage(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (e) {
+                console.error(`Error saving ${key} to localStorage:`, e);
+            }
+        }
+
+        // Export to Excel
+        function exportToExcel(tableId, fileName) {
+            const table = document.getElementById(tableId);
+            const rows = table.querySelectorAll('tr');
+            const data = [];
+            
+            // Get headers
+            const headers = Array.from(rows[0].querySelectorAll('th')).map(th => th.textContent);
+            data.push(headers);
+
+            // Get rows
+            Array.from(rows).slice(1).forEach(row => {
+                const rowData = Array.from(row.querySelectorAll('td')).map(td => td.textContent);
+                data.push(rowData);
+            });
+
+            // Create workbook and worksheet
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+            // Download Excel file
+            XLSX.write(wb, `${fileName}.xlsx`);
+        }
+
+        // Sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.overlay');
+            sidebar.classList.toggle('sidebar-open');
+            overlay.classList.toggle('active');
+        }
+
+        // View switching
+        function openView(viewName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(viewName).classList.add('active');
+            if (viewName === 'admin') openAdminTab('students');
+            if (window.innerWidth < 768) toggleSidebar();
+            if (viewName === 'groupStudents') renderGroupStudentsTable(currentGroupId);
+            renderAllStudentsTable();
+            renderAllTeachersTable();
+            renderAllGroupsTable();
+            renderPaidStudentsTable();
+            renderUnpaidStudentsTable();
+        }
+
+        // Admin tab switching
+        function openAdminTab(tabName) {
+            document.querySelectorAll('#admin .tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('#admin button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`button[onclick="openAdminTab('${tabName}')"]`).classList.add('active');
+            updateTeacherSelect();
+            updateGroupSelect();
+            renderStudentTable();
+            renderPaymentTable();
+            renderTeacherTable();
+            renderGroupTable();
+        }
+
+        // Clean payments
+        function cleanPayments() {
+            const validStudentIds = new Set(state.students.map(student => student.id));
+            for (let id in state.payments) {
+                if (!validStudentIds.has(Number(id))) {
+                    delete state.payments[id];
+                }
+            }
+            state.updateData('payments', state.payments);
+        }
+
+        // Initialize payments
+        state.students.forEach(student => {
+            if (!state.payments[student.id]) {
+                state.payments[student.id] = { status: 'unpaid', date: null };
+            }
+        });
+        cleanPayments();
+
+        // Populate teacher select
+        function updateTeacherSelect() {
+            const teacherSelect = document.getElementById('teacherSelect');
+            const studentSubmit = document.getElementById('studentSubmit');
+            teacherSelect.innerHTML = '<option value="">Select Teacher</option>';
+            if (state.teachers.length === 0) {
+                teacherSelect.disabled = true;
+                studentSubmit.disabled = true;
+                document.getElementById('studentError').textContent = 'No teachers available. Please add a teacher first.';
+            } else {
+                teacherSelect.disabled = false;
+                studentSubmit.disabled = false;
+                document.getElementById('studentError').textContent = '';
+                state.teachers.forEach(teacher => {
+                    if (teacher.name && teacher.surname) {
+                        const fullName = `${teacher.name} ${teacher.surname}`;
+                        const option = document.createElement('option');
+                        option.value = fullName;
+                        option.textContent = fullName;
+                        teacherSelect.appendChild(option);
+                    }
+                });
+            }
+        }
+
+        // Populate group select
+        function updateGroupSelect() {
+            const groupSelect = document.getElementById('teacherGroup');
+            const studentGroupSelect = document.getElementById('groupSelect');
+            const teacherSubmit = document.getElementById('teacherSubmit');
+            groupSelect.innerHTML = '<option value="">Select Group</option>';
+            studentGroupSelect.innerHTML = '<option value="">Select Group</option>';
+            if (state.groups.length === 0) {
+                groupSelect.disabled = true;
+                studentGroupSelect.disabled = true;
+                teacherSubmit.disabled = true;
+                document.getElementById('teacherError').textContent = 'No groups available. Please add a group first.';
+            } else {
+                groupSelect.disabled = false;
+                studentGroupSelect.disabled = false;
+                teacherSubmit.disabled = false;
+                document.getElementById('teacherError').textContent = '';
+                state.groups.forEach(group => {
+                    if (group.id && group.time) {
+                        const option = document.createElement('option');
+                        option.value = group.id;
+                        option.textContent = `Group ${group.id} (${group.time})`;
+                        groupSelect.appendChild(option);
+                        const studentOption = document.createElement('option');
+                        studentOption.value = group.id;
+                        studentOption.textContent = `Group ${group.id} (${group.time})`;
+                        studentGroupSelect.appendChild(studentOption);
+                    }
+                });
+            }
+        }
+
+        // Student form submission
+        document.getElementById('studentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (state.teachers.length === 0) {
+                document.getElementById('studentError').textContent = 'Cannot add student: No teachers available.';
+                return;
+            }
+            if (state.groups.length === 0) {
+                document.getElementById('studentError').textContent = 'Cannot add student: No groups available.';
+                return;
+            }
+            const student = {
+                id: Date.now(),
+                name: document.getElementById('studentName').value.trim(),
+                surname: document.getElementById('studentSurname').value.trim(),
+                phone: document.getElementById('studentPhone').value.trim(),
+                parentName: document.getElementById('parentName').value.trim(),
+                parentPhone: document.getElementById('parentPhone').value.trim(),
+                teacher: document.getElementById('teacherSelect').value,
+                group: document.getElementById('groupSelect').value,
+                time: document.getElementById('timeSelect').value
+            };
+            if (!student.name || !student.surname || !student.phone || !student.parentName || !student.parentPhone || !student.teacher || !student.group || !student.time) {
+                document.getElementById('studentError').textContent = 'All fields are required.';
+                return;
+            }
+            if (!/^\d+$/.test(student.phone) || !/^\d+$/.test(student.parentPhone)) {
+                document.getElementById('studentError').textContent = 'Phone numbers must contain only digits.';
+                return;
+            }
+            if (!state.teachers.some(t => `${t.name} ${t.surname}` === student.teacher)) {
+                document.getElementById('studentError').textContent = 'Selected teacher does not exist.';
+                return;
+            }
+            if (!state.groups.some(g => g.id === student.group)) {
+                document.getElementById('studentError').textContent = 'Selected group does not exist.';
+                return;
+            }
+            state.students.push(student);
+            state.payments[student.id] = { status: 'unpaid', date: null };
+            state.updateData('students', state.students);
+            state.updateData('payments', state.payments);
+            this.reset();
+            document.getElementById('studentError').textContent = '';
+            alert('Student added and awaiting confirmation!');
+        });
+
+        // Teacher form submission
+        document.getElementById('teacherForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (state.groups.length === 0) {
+                document.getElementById('teacherError').textContent = 'Cannot add teacher: No groups available.';
+                return;
+            }
+            const teacher = {
+                id: Date.now(),
+                name: document.getElementById('teacherName').value.trim(),
+                surname: document.getElementById('teacherSurname').value.trim(),
+                phone: document.getElementById('teacherPhone').value.trim(),
+                group: document.getElementById('teacherGroup').value,
+                time: document.getElementById('teacherTime').value
+            };
+            if (!teacher.name || !teacher.surname || !teacher.phone || !teacher.group || !teacher.time) {
+                document.getElementById('teacherError').textContent = 'All fields are required.';
+                return;
+            }
+            if (!/^\d+$/.test(teacher.phone)) {
+                document.getElementById('teacherError').textContent = 'Phone number must contain only digits.';
+                return;
+            }
+            if (!state.groups.some(g => g.id === teacher.group)) {
+                document.getElementById('teacherError').textContent = 'Selected group does not exist.';
+                return;
+            }
+            state.teachers.push(teacher);
+            state.updateData('teachers', state.teachers);
+            this.reset();
+            document.getElementById('teacherError').textContent = '';
+            alert('Teacher added successfully!');
+        });
+
+        // Group form submission
+        document.getElementById('groupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const groupId = document.getElementById('groupId').value.trim();
+            if (!/^\d{5}$/.test(groupId)) {
+                alert('Group ID must be a 5-digit number.');
+                return;
+            }
+            if (state.groups.some(group => group.id === groupId)) {
+                alert('Group ID already exists. Please use a unique 5-digit ID.');
+                return;
+            }
+            const group = {
+                id: groupId,
+                time: document.getElementById('groupTime').value
+            };
+            if (!group.time) {
+                alert('Please select a time for the group.');
+                return;
+            }
+            state.groups.push(group);
+            state.updateData('groups', state.groups);
+            this.reset();
+            alert('Group added successfully!');
+        });
+
+        // Delete student
+        function deleteStudent(studentId) {
+            if (confirm('Are you sure you want to delete this student?')) {
+                state.students = state.students.filter(student => student.id !== studentId);
+                delete state.payments[studentId];
+                state.updateData('students', state.students);
+                state.updateData('payments', state.payments);
+                alert('Student deleted successfully!');
+            }
+        }
+
+        // Delete teacher
+        function deleteTeacher(teacherId) {
+            if (confirm('Are you sure you want to delete this teacher?')) {
+                if (state.students.some(student => student.teacher === state.teachers.find(t => t.id === teacherId)?.name + ' ' + state.teachers.find(t => t.id === teacherId)?.surname)) {
+                    alert('Cannot delete teacher: They are assigned to one or more students.');
+                    return;
+                }
+                state.teachers = state.teachers.filter(teacher => teacher.id !== teacherId);
+                state.updateData('teachers', state.teachers);
+                alert('Teacher deleted successfully!');
+            }
+        }
+
+        // Delete group
+        function deleteGroup(groupId) {
+            if (confirm('Are you sure you want to delete this group?')) {
+                if (state.teachers.some(teacher => teacher.group === groupId) || state.students.some(student => student.group === groupId)) {
+                    alert('Cannot delete group: It is assigned to one or more teachers or students.');
+                    return;
+                }
+                state.groups = state.groups.filter(group => group.id !== groupId);
+                state.updateData('groups', state.groups);
+                alert('Group deleted successfully!');
+            }
+        }
+
+        // Confirm student
+        function confirmStudent(studentId) {
+            alert('Student confirmed!');
+            renderStudentTable();
+        }
+
+        // Make payment
+        function makePayment(studentId) {
+            state.payments[studentId] = { status: 'paid', date: new Date().toISOString().slice(0, 10) };
+            state.updateData('payments', state.payments);
+        }
+
+        // Cancel payment
+        function cancelPayment(studentId) {
+            state.payments[studentId] = { status: 'unpaid', date: null };
+            state.updateData('payments', state.payments);
+        }
+
+        // Reset payments on the 1st of each month
+        function resetPayments() {
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            if (today.getDate() === 1 && state.lastResetMonth !== currentMonth) {
+                state.students.forEach(student => {
+                    state.payments[student.id] = { status: 'unpaid', date: null };
+                });
+                state.updateData('payments', state.payments);
+                state.updateData('lastResetMonth', currentMonth);
+            }
+        }
+
+        // Render student table
+        function renderStudentTable() {
+            const tbody = document.getElementById('studentTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('adminStudentSearch')?.value.toLowerCase() || '';
+            state.students
+                .filter(student => student.name.toLowerCase().includes(searchQuery) || student.surname.toLowerCase().includes(searchQuery))
+                .forEach(student => {
+                    if (student.name && student.surname && student.phone && student.parentName && student.parentPhone && student.teacher && student.group && student.time) {
+                        const status = state.payments[student.id]?.status || 'unpaid';
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'hover:bg-gray-100', status === 'paid' ? 'paid' : 'unpaid');
+                        row.innerHTML = `
+                            <td class="p-3">${student.name}</td>
+                            <td class="p-3">${student.surname}</td>
+                            <td class="p-3">${student.phone}</td>
+                            <td class="p-3">${student.parentName}</td>
+                            <td class="p-3">${student.parentPhone}</td>
+                            <td class="p-3">${student.teacher}</td>
+                            <td class="p-3">${student.group}</td>
+                            <td class="p-3">${student.time}</td>
+                            <td class="p-3">${status.charAt(0).toUpperCase() + status.slice(1)}</td>
+                            <td class="p-3">
+                                <button onclick="confirmStudent(${student.id})" class="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-2">Confirm</button>
+                                <button onclick="deleteStudent(${student.id})" class="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 delete">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render all students table
+        function renderAllStudentsTable() {
+            const tbody = document.getElementById('allStudentsTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('studentSearch')?.value.toLowerCase() || '';
+            state.students
+                .filter(student => student.name.toLowerCase().includes(searchQuery) || student.surname.toLowerCase().includes(searchQuery))
+                .forEach(student => {
+                    if (student.name && student.surname && student.phone && student.parentName && student.parentPhone && student.teacher && student.group && student.time) {
+                        const status = state.payments[student.id]?.status || 'unpaid';
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'hover:bg-gray-100', status === 'paid' ? 'paid' : 'unpaid');
+                        row.innerHTML = `
+                            <td class="p-3">${student.name}</td>
+                            <td class="p-3">${student.surname}</td>
+                            <td class="p-3">${student.phone}</td>
+                            <td class="p-3">${student.parentName}</td>
+                            <td class="p-3">${student.parentPhone}</td>
+                            <td class="p-3">${student.teacher}</td>
+                            <td class="p-3">${student.group}</td>
+                            <td class="p-3">${student.time}</td>
+                            <td class="p-3">${status.charAt(0).toUpperCase() + status.slice(1)}</td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render all teachers table
+        function renderAllTeachersTable() {
+            const tbody = document.getElementById('allTeachersTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('teacherSearch')?.value.toLowerCase() || '';
+            state.teachers
+                .filter(teacher => teacher.name.toLowerCase().includes(searchQuery) || teacher.surname.toLowerCase().includes(searchQuery))
+                .forEach(teacher => {
+                    if (teacher.id && teacher.name && teacher.surname && teacher.phone && teacher.group && teacher.time) {
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'hover:bg-gray-100');
+                        row.innerHTML = `
+                            <td class="p-3">${teacher.name}</td>
+                            <td class="p-3">${teacher.surname}</td>
+                            <td class="p-3">${teacher.phone}</td>
+                            <td class="p-3">${teacher.group}</td>
+                            <td class="p-3">${teacher.time}</td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render all groups table
+        let currentGroupId = null;
+        function renderAllGroupsTable() {
+            const tbody = document.getElementById('allGroupsTable');
+            tbody.innerHTML = '';
+            state.groups.forEach(group => {
+                if (group.id && group.time) {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'hover:bg-gray-100');
+                    row.innerHTML = `
+                        <td class="p-3">${group.id}</td>
+                        <td class="p-3">${group.time}</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            });
+        }
+
+        // Show group students
+        function showGroupStudents(groupId) {
+            currentGroupId = groupId;
+            openView('groupStudents');
+        }
+
+        // Render group students table
+        function renderGroupStudentsTable(groupId) {
+            const tbody = document.getElementById('groupStudentsTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('groupStudentSearch')?.value.toLowerCase() || '';
+            state.students
+                .filter(student => student.group === groupId && (student.name.toLowerCase().includes(searchQuery) || student.surname.toLowerCase().includes(searchQuery)))
+                .forEach(student => {
+                    if (student.name && student.surname && student.phone && student.parentName && student.parentPhone && student.teacher && student.group && student.time) {
+                        const status = state.payments[student.id]?.status || 'unpaid';
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'hover:bg-gray-100', status === 'paid' ? 'paid' : 'unpaid');
+                        row.innerHTML = `
+                            <td class="p-3">${student.name}</td>
+                            <td class="p-3">${student.surname}</td>
+                            <td class="p-3">${student.phone}</td>
+                            <td class="p-3">${student.parentName}</td>
+                            <td class="p-3">${student.parentPhone}</td>
+                            <td class="p-3">${student.teacher}</td>
+                            <td class="p-3">${student.group}</td>
+                            <td class="p-3">${student.time}</td>
+                            <td class="p-3">${status.charAt(0).toUpperCase() + status.slice(1)}</td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render paid students table
+        function renderPaidStudentsTable() {
+            const tbody = document.getElementById('paidStudentsTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('paidStudentSearch')?.value.toLowerCase() || '';
+            state.students
+                .filter(student => state.payments[student.id]?.status === 'paid' && (student.name.toLowerCase().includes(searchQuery) || student.surname.toLowerCase().includes(searchQuery)))
+                .forEach(student => {
+                    if (student.name && student.surname && student.phone && student.parentName && student.parentPhone && student.teacher && student.group && student.time) {
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'hover:bg-gray-100', 'paid');
+                        row.innerHTML = `
+                            <td class="p-3">${student.name}</td>
+                            <td class="p-3">${student.surname}</td>
+                            <td class="p-3">${student.phone}</td>
+                            <td class="p-3">${student.parentName}</td>
+                            <td class="p-3">${student.parentPhone}</td>
+                            <td class="p-3">${student.teacher}</td>
+                            <td class="p-3">${student.group}</td>
+                            <td class="p-3">${student.time}</td>
+                            <td class="p-3">Paid</td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render unpaid students table
+        function renderUnpaidStudentsTable() {
+            const tbody = document.getElementById('unpaidStudentsTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('unpaidStudentSearch')?.value.toLowerCase() || '';
+            state.students
+                .filter(student => state.payments[student.id]?.status === 'unpaid' && (student.name.toLowerCase().includes(searchQuery) || student.surname.toLowerCase().includes(searchQuery)))
+                .forEach(student => {
+                    if (student.name && student.surname && student.phone && student.parentName && student.parentPhone && student.teacher && student.group && student.time) {
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'hover:bg-gray-100', 'unpaid');
+                        row.innerHTML = `
+                            <td class="p-3">${student.name}</td>
+                            <td class="p-3">${student.surname}</td>
+                            <td class="p-3">${student.phone}</td>
+                            <td class="p-3">${student.parentName}</td>
+                            <td class="p-3">${student.parentPhone}</td>
+                            <td class="p-3">${student.teacher}</td>
+                            <td class="p-3">${student.group}</td>
+                            <td class="p-3">${student.time}</td>
+                            <td class="p-3">Unpaid</td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render payment table
+        function renderPaymentTable() {
+            const tbody = document.getElementById('paymentTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('paymentSearch')?.value.toLowerCase() || '';
+            state.students
+                .filter(student => student.name.toLowerCase().includes(searchQuery) || student.surname.toLowerCase().includes(searchQuery))
+                .forEach(student => {
+                    if (student.name && student.surname && student.phone) {
+                        const status = state.payments[student.id]?.status || 'unpaid';
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', status === 'paid' ? 'paid' : 'unpaid');
+                        row.innerHTML = `
+                            <td class="p-3">${student.name}</td>
+                            <td class="p-3">${student.surname}</td>
+                            <td class="p-3">${student.phone}</td>
+                            <td class="p-3">${status.charAt(0).toUpperCase() + status.slice(1)}</td>
+                            <td class="p-3">
+                                <button onclick="makePayment(${student.id})" ${status === 'paid' ? 'disabled' : ''} class="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-2 disabled:bg-gray-400">Pay 400,000 UZS</button>
+                                <button onclick="cancelPayment(${student.id})" ${status === 'unpaid' ? 'disabled' : ''} class="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 cancel">Cancel</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render teacher table
+        function renderTeacherTable() {
+            const tbody = document.getElementById('teacherTable');
+            tbody.innerHTML = '';
+            const searchQuery = document.getElementById('adminTeacherSearch')?.value.toLowerCase() || '';
+            state.teachers
+                .filter(teacher => teacher.name.toLowerCase().includes(searchQuery) || teacher.surname.toLowerCase().includes(searchQuery))
+                .forEach(teacher => {
+                    if (teacher.id && teacher.name && teacher.surname && teacher.phone && teacher.group && teacher.time) {
+                        const row = document.createElement('tr');
+                        row.classList.add('border-b', 'hover:bg-gray-100');
+                        row.innerHTML = `
+                            <td class="p-3">${teacher.name}</td>
+                            <td class="p-3">${teacher.surname}</td>
+                            <td class="p-3">${teacher.phone}</td>
+                            <td class="p-3">${teacher.group}</td>
+                            <td class="p-3">${teacher.time}</td>
+                            <td class="p-3">
+                                <button onclick="deleteTeacher(${teacher.id})" class="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 delete">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+        }
+
+        // Render group table
+        function renderGroupTable() {
+            const tbody = document.getElementById('groupTable');
+            tbody.innerHTML = '';
+            state.groups.forEach(group => {
+                if (group.id && group.time) {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'hover:bg-gray-100');
+                    row.innerHTML = `
+                        <td class="p-3">${group.id}</td>
+                        <td class="p-3">${group.time}</td>
+                        <td class="p-3">
+                            <button onclick="showGroupStudents('${group.id}')" class="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-2">View Students</button>
+                            <button onclick="deleteGroup('${group.id}')" class="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 delete">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            });
+        }
+
+        // Dashboard rendering functions
+        function updateMetrics() {
+            document.getElementById('totalStudents').textContent = state.students.length;
+            document.getElementById('totalTeachers').textContent = state.teachers.length;
+            document.getElementById('totalGroups').textContent = state.groups.length;
+            const paidCount = Object.values(state.payments).filter(p => p.status === 'paid').length;
+            document.getElementById('paidStudents').textContent = paidCount;
+            document.getElementById('unpaidStudents').textContent = state.students.length - paidCount;
+        }
+
+        function renderRecentStudentsTable() {
+            const tbody = document.getElementById('recentStudentsTable');
+            tbody.innerHTML = '';
+            const recentStudents = state.students.slice(-5).reverse();
+            recentStudents.forEach(student => {
+                if (student.name && student.surname && student.teacher && student.group && student.time) {
+                    const status = state.payments[student.id]?.status || 'unpaid';
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'hover:bg-gray-100', status === 'paid' ? 'paid' : 'unpaid');
+                    row.innerHTML = `
+                        <td class="p-3">${student.name}</td>
+                        <td class="p-3">${student.surname}</td>
+                        <td class="p-3">${student.teacher}</td>
+                        <td class="p-3">${student.group}</td>
+                        <td class="p-3">${student.time}</td>
+                        <td class="p-3">${status.charAt(0).toUpperCase() + status.slice(1)}</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            });
+        }
+
+        function renderPaymentStatusTable() {
+            const tbody = document.getElementById('paymentStatusTable');
+            tbody.innerHTML = '';
+            state.students.forEach(student => {
+                if (student.name && student.surname) {
+                    const status = state.payments[student.id]?.status || 'unpaid';
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', status === 'paid' ? 'paid' : 'unpaid');
+                    row.innerHTML = `
+                        <td class="p-3">${student.name}</td>
+                        <td class="p-3">${student.surname}</td>
+                        <td class="p-3">${status.charAt(0).toUpperCase() + status.slice(1)}</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            });
+        }
+
+        let timeChart, paymentChart;
+
+        function renderTimeDistributionChart() {
+            const timeSlots = ["09:00-10:30", "11:00-12:30", "13:00-14:30", "15:00-16:30", "17:00-18:30"];
+            const counts = timeSlots.map(slot => 
+                state.students.filter(student => student.time === slot).length
+            );
+
+            if (timeChart) timeChart.destroy();
+            timeChart = new Chart(document.getElementById('timeDistributionChart'), {
+                type: 'bar',
+                data: {
+                    labels: timeSlots,
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: counts,
+                        backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
+                        borderColor: ['#2563eb', '#dc2626', '#059669', '#d97706', '#7c3aed'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Number of Students' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Time Slots' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function renderPaymentStatusChart() {
+            const paidCount = Object.values(state.payments).filter(p => p.status === 'paid').length;
+            const unpaidCount = Object.values(state.payments).filter(p => p.status === 'unpaid').length;
+
+            if (paymentChart) paymentChart.destroy();
+            paymentChart = new Chart(document.getElementById('paymentStatusChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['Paid', 'Unpaid'],
+                    datasets: [{
+                        data: [paidCount, unpaidCount],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderColor: ['#059669', '#dc2626'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+        // Update dashboard
+        function updateDashboard() {
+            updateMetrics();
+            renderRecentStudentsTable();
+            renderPaymentStatusTable();
+            renderTimeDistributionChart();
+            renderPaymentStatusChart();
+        }
+
+        // Search functionality
+        function setupSearchListeners() {
+            const searchInputs = [
+                { id: 'studentSearch', render: renderAllStudentsTable },
+                { id: 'teacherSearch', render: renderAllTeachersTable },
+                { id: 'groupStudentSearch', render: () => renderGroupStudentsTable(currentGroupId) },
+                { id: 'paidStudentSearch', render: renderPaidStudentsTable },
+                { id: 'unpaidStudentSearch', render: renderUnpaidStudentsTable },
+                { id: 'adminStudentSearch', render: renderStudentTable },
+                { id: 'paymentSearch', render: renderPaymentTable },
+                { id: 'adminTeacherSearch', render: renderTeacherTable }
+            ];
+            searchInputs.forEach(({ id, render }) => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('input', render);
+                }
+            });
+        }
+
+        // Subscribe to state changes
+        state.addListener(() => {
+            updateTeacherSelect();
+            updateGroupSelect();
+            renderStudentTable();
+            renderPaymentTable();
+            renderTeacherTable();
+            renderGroupTable();
+            renderAllStudentsTable();
+            renderAllTeachersTable();
+            renderAllGroupsTable();
+            renderPaidStudentsTable();
+            renderUnpaidStudentsTable();
+            updateDashboard();
+        });
+
+        // Initialize
+        resetPayments();
+        setupSearchListeners();
+        openView('dashboard');
+        updateDashboard();
+    </script>
+</body>
+</html>

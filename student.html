@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <title>Wexford LC Student App</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #1a1a1a;
+            color: #00ffcc;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc;
+        }
+        .login-section, .sms-section, .dashboard-section {
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0a0a0a, #2a2a2a);
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 15px #00ffcc, inset 0 0 10px #00ffcc;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .login-section.active, .sms-section.active, .dashboard-section.active {
+            display: flex;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .login-form, .sms-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 80%;
+            max-width: 400px;
+        }
+        .login-form input, .sms-form input {
+            padding: 12px;
+            border: 2px solid #00ffcc;
+            border-radius: 5px;
+            background-color: #0a0a0a;
+            color: #00ffcc;
+            font-size: 1.2rem;
+            outline: none;
+            box-shadow: 0 0 5px #00ffcc;
+            transition: box-shadow 0.3s;
+        }
+        .login-form input:focus, .sms-form input:focus {
+            box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+        }
+        .login-form button, .sms-form button {
+            padding: 12px;
+            background-color: #00ffcc;
+            color: #1a1a1a;
+            border: 2px solid #00ffcc;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+        .login-form button:hover, .sms-form button:hover {
+            background-color: #1a1a1a;
+            color: #00ffcc;
+        }
+        .error {
+            color: #ff4444;
+            font-size: 1rem;
+            text-shadow: 0 0 5px #ff4444;
+            margin-top: 10px;
+        }
+        .header-section {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a0a, #2a2a2a);
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 15px #00ffcc, inset 0 0 10px #00ffcc;
+            width: 80%;
+            max-width: 500px;
+            margin-bottom: 20px;
+        }
+        .header-section p {
+            margin: 10px 0;
+            font-size: 1.2rem;
+        }
+        .header-section .student-info {
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .header-section .admin-action {
+            font-size: 1rem;
+            color: #99ffcc;
+        }
+        .avatar-container {
+            margin: 20px auto;
+            text-align: center;
+        }
+        .avatar-img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #00ffcc;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+        .avatar-placeholder {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #99ffcc;
+            border: 3px solid #00ffcc;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+        .avatar-upload {
+            margin-top: 15px;
+        }
+        .avatar-upload input[type="file"] {
+            display: none;
+        }
+        .avatar-upload label {
+            padding: 10px 20px;
+            background-color: #00ffcc;
+            color: #1a1a1a;
+            border: 2px solid #00ffcc;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            text-transform: uppercase;
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 44px;
+            display: inline-block;
+            text-align: center;
+        }
+        .avatar-upload label:hover {
+            background-color: #1a1a1a;
+            color: #00ffcc;
+        }
+        .dashboard-section button {
+            padding: 12px;
+            background-color: #ff4444;
+            color: #1a1a1a;
+            border: 2px solid #ff4444;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 44px;
+            touch-action: manipulation;
+            width: 80%;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+        .dashboard-section button:hover {
+            background-color: #1a1a1a;
+            color: #ff4444;
+        }
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            .login-form, .sms-form {
+                width: 90%;
+            }
+            .header-section {
+                width: 90%;
+            }
+            .avatar-img, .avatar-placeholder {
+                width: 90px;
+                height: 90px;
+            }
+            .login-form input, .sms-form input, .login-form button, .sms-form button {
+                font-size: 1rem;
+            }
+            .dashboard-section button {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loginSection" class="login-section active">
+        <h1>Student Terminal</h1>
+        <form id="loginForm" class="login-form">
+            <input type="tel" id="phoneInput" placeholder="Enter Phone Number" required inputmode="numeric">
+            <button type="submit">Send Code</button>
+        </form>
+        <div id="loginError" class="error"></div>
+    </div>
+    <div id="smsSection" class="sms-section">
+        <h1>Verification</h1>
+        <form id="smsForm" class="sms-form">
+            <input type="text" id="smsInput" placeholder="Enter SMS Code" required inputmode="numeric">
+            <button type="submit">Verify</button>
+        </form>
+        <div id="smsError" class="error"></div>
+    </div>
+    <div id="dashboardSection" class="dashboard-section">
+        <div class="header-section">
+            <p class="student-info"><span id="studentName"></span> <span id="studentSurname"></span></p>
+            <p class="admin-action" id="adminAction"></p>
+            <div class="avatar-container">
+                <img id="avatarImage" class="avatar-img" style="display: none;">
+                <div id="avatarPlaceholder" class="avatar-placeholder">No Avatar</div>
+                <div class="avatar-upload">
+                    <label for="avatarInput">Upload Avatar</label>
+                    <input type="file" id="avatarInput" accept="image/*">
+                </div>
+            </div>
+        </div>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        // Safely load data from localStorage
+        function loadFromStorage(key, defaultValue) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : defaultValue;
+            } catch (e) {
+                console.error(`Error loading ${key} from localStorage:`, e);
+                return defaultValue;
+            }
+        }
+
+        // Initialize data
+        let students = loadFromStorage('students', []);
+        let payments = loadFromStorage('payments', {});
+        let currentStudent = null;
+        let smsCode = null;
+
+        // Generate a random 4-digit SMS code
+        function generateSmsCode() {
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+
+        // Login form submission (phone number)
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const phone = document.getElementById('phoneInput').value.trim();
+            const errorElement = document.getElementById('loginError');
+
+            currentStudent = students.find(student => student.phone === phone);
+            if (!currentStudent) {
+                errorElement.textContent = 'Student Not Found';
+                return;
+            }
+
+            // Generate and "send" SMS code (simulated with alert)
+            smsCode = generateSmsCode();
+            alert(`SMS Code: ${smsCode}`); // Simulating SMS delivery
+            errorElement.textContent = '';
+            document.getElementById('loginSection').classList.remove('active');
+            document.getElementById('smsSection').classList.add('active');
+            document.getElementById('smsInput').value = '';
+            document.getElementById('smsInput').focus();
+        });
+
+        // SMS code verification
+        document.getElementById('smsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const enteredCode = document.getElementById('smsInput').value.trim();
+            const errorElement = document.getElementById('smsError');
+
+            if (!/^\d{4}$/.test(enteredCode)) {
+                errorElement.textContent = 'Invalid Code';
+                return;
+            }
+
+            if (enteredCode !== smsCode) {
+                errorElement.textContent = 'Wrong Code';
+                return;
+            }
+
+            // Code is correct, proceed to dashboard
+            errorElement.textContent = '';
+            smsCode = null; // Clear the code
+            document.getElementById('smsSection').classList.remove('active');
+            document.getElementById('dashboardSection').classList.add('active');
+            renderDashboard();
+        });
+
+        // Render dashboard
+        function renderDashboard() {
+            if (!currentStudent) return;
+
+            const nameElement = document.getElementById('studentName');
+            const surnameElement = document.getElementById('studentSurname');
+            const adminActionElement = document.getElementById('adminAction');
+            const avatarImage = document.getElementById('avatarImage');
+            const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+
+            nameElement.textContent = currentStudent.name || 'N/A';
+            surnameElement.textContent = currentStudent.surname || 'N/A';
+            adminActionElement.textContent = 'Added by Admin: Manual Entry'; // Placeholder
+
+            // Load avatar from localStorage
+            const avatarData = localStorage.getItem(`avatar_${currentStudent.id}`);
+            if (avatarData) {
+                avatarImage.src = avatarData;
+                avatarImage.style.display = 'block';
+                avatarPlaceholder.style.display = 'none';
+            } else {
+                avatarImage.style.display = 'none';
+                avatarPlaceholder.style.display = 'flex';
+            }
+
+            // Handle avatar upload
+            const avatarInput = document.getElementById('avatarInput');
+            avatarInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const base64Image = event.target.result;
+                        localStorage.setItem(`avatar_${currentStudent.id}`, base64Image);
+                        avatarImage.src = base64Image;
+                        avatarImage.style.display = 'block';
+                        avatarPlaceholder.style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert('Invalid Image File');
+                }
+            };
+        }
+
+        // Logout function
+        function logout() {
+            currentStudent = null;
+            smsCode = null; // Clear the SMS code
+            document.getElementById('phoneInput').value = '';
+            document.getElementById('smsInput').value = '';
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('smsError').textContent = '';
+            document.getElementById('avatarInput').value = ''; // Clear file input
+            document.getElementById('dashboardSection').classList.remove('active');
+            document.getElementById('smsSection').classList.remove('active');
+            document.getElementById('loginSection').classList.add('active');
+            document.getElementById('phoneInput').focus();
+        }
+
+        // Handle keyboard input for phone number
+        document.getElementById('phoneInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Handle keyboard input for SMS code
+        document.getElementById('smsInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('smsForm').dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Initialize
+        document.getElementById('phoneInput').focus();
+
+        // Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+        }
+    </script>
+</body>
+</html>
